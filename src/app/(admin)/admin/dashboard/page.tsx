@@ -13,7 +13,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { mockDashboardStats, mockChartData, mockIssues } from '@/data/mockData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PriorityBadge } from '@/components/ui/PriorityBadge';
-import { AdminLayout } from '../layout';
+import { AdminLayout } from '../../layout';
 
 export default function AdminDashboard() {
   const [mounted, setMounted] = useState(false);

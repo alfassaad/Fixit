@@ -1,8 +1,31 @@
 
 "use client";
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mockIssues, mockUser, mockNotifications, mockAdminUser } from '@/data/mockData';
+import { useToast } from '@/hooks/use-toast';
+import * as issueService from '@/services/issueService';
+import * as authService from '@/services/authService';
+
+// Normalize Supabase rows → shape expected by the UI
+const normalizeIssue = (row: any) => ({
+  id: row.id,
+  title: row.title,
+  category: row.category,
+  status: row.status,
+  priority: row.priority,
+  description: row.description,
+  location: {
+    lat: row.latitude,
+    lng: row.longitude,
+    address: row.address || '',
+  },
+  upvotes: row.upvote_count ?? 0,
+  reportedBy: row.reporter?.full_name || 'Anonymous',
+  reportedAt: row.created_at,
+  assignedTo: row.assignee?.full_name || null,
+  photos: row.photos?.map((p: any) => p.photo_url) || [],
+  resolvedAt: row.resolved_at,
+  comments: [],
+});
 
 interface AppContextType {
   currentUser: any;
@@ -17,85 +40,185 @@ interface AppContextType {
   assignIssue: (issueId: string, technicianId: string) => void;
   markNotificationsRead: () => void;
   isLoading: boolean;
+  refreshIssues: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [issues, setIssues] = useState(mockIssues);
-  const [notifications, setNotifications] = useState(mockNotifications);
-  const [isLoading, setIsLoading] = useState(false);
+  const [issues, setIssues] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Persistence for demo
+  // Fetch Supabase session on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('fixit_user');
-    if (savedUser) setCurrentUser(JSON.parse(savedUser));
+    const initAuth = async () => {
+      setIsLoading(true);
+      try {
+        const session = await authService.getSession();
+        if (session?.user) {
+          const profile = await authService.getCurrentProfile().catch(() => null);
+          setCurrentUser(profile ?? session.user);
+        }
+        // Fetch issues from Supabase
+        const data = await issueService.getIssues({});
+        setIssues((data ?? []).map(normalizeIssue));
+      } catch (err) {
+        console.error('Failed to init app:', err);
+        setIssues([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    initAuth();
+
+    // Listen for auth changes
+    const { data: listener } = authService.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        authService.getCurrentProfile()
+          .then((profile) => setCurrentUser(profile ?? session.user))
+          .catch(() => setCurrentUser(session.user));
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => {
+      listener?.subscription?.unsubscribe();
+    };
   }, []);
 
-  const login = (role: 'citizen' | 'admin') => {
-    const user = role === 'citizen' ? mockUser : mockAdminUser;
-    setCurrentUser(user);
-    localStorage.setItem('fixit_user', JSON.stringify(user));
+  const login = async (role: 'citizen' | 'admin') => {
+    // For now, use demo auth via Supabase
+    try {
+      if (role === 'citizen') {
+        await authService.signIn({ email: 'citizen@demo.com', password: 'demo1234' });
+      } else {
+        await authService.signIn({ email: 'admin@demo.com', password: 'demo1234' });
+      }
+    } catch (err) {
+      console.error('Login failed, falling back to guest:', err);
+      // Guest: no Supabase auth, just local state
+      const guestUser = role === 'citizen'
+        ? { id: 'guest', name: 'Guest', email: 'guest@demo.com', role: 'citizen' }
+        : { id: 'guest-admin', name: 'Admin Guest', email: 'admin_guest@demo.com', role: 'admin' };
+      setCurrentUser(guestUser);
+    }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await authService.signOut();
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
     setCurrentUser(null);
-    localStorage.removeItem('fixit_user');
   };
 
-  const submitReport = (newReport: any) => {
-    const reportWithId = {
-      ...newReport,
-      id: `ISS-${String(issues.length + 1).padStart(3, '0')}`,
-      upvotes: 0,
-      reportedBy: currentUser?.name || "Guest",
-      reportedAt: new Date().toISOString(),
-      status: 'open',
-      comments: []
-    };
-    setIssues(prev => [reportWithId, ...prev]);
+  const refreshIssues = async () => {
+    try {
+      const data = await issueService.getIssues({});
+      setIssues((data ?? []).map(normalizeIssue));
+    } catch (err) {
+      console.error('Failed to refresh issues:', err);
+    }
   };
 
-  const upvoteIssue = (issueId: string) => {
-    setIssues(prev => prev.map(issue => 
-      issue.id === issueId ? { ...issue, upvotes: issue.upvotes + 1 } : issue
-    ));
+  const submitReport = async (newReport: any) => {
+    try {
+      const created = await issueService.createIssue({
+        title: newReport.title,
+        description: newReport.description,
+        category: newReport.category,
+        address: newReport.location?.address || '',
+        latitude: newReport.location?.lat,
+        longitude: newReport.location?.lng,
+        priority: newReport.priority ?? 'medium',
+      });
+
+      // Also handle photos if present
+      if (newReport.photos?.length > 0 && created?.id) {
+        const uploadService = await import('@/services/uploadService');
+        for (const photoB64 of newReport.photos) {
+          try {
+            const response = await fetch(photoB64);
+            const blob = await response.blob();
+            const file = new File([blob], `photo-${Date.now()}.jpg`, { type: blob.type });
+            await uploadService.uploadPhoto(file, created.id, 'evidence');
+          } catch (e) {
+            console.error('Failed to upload photo:', e);
+          }
+        }
+      }
+
+      setIssues((prev) => [created, ...prev]);
+    } catch (err) {
+      console.error('Failed to create issue:', err);
+    }
   };
 
-  const updateIssueStatus = (issueId: string, newStatus: string) => {
-    setIssues(prev => prev.map(issue => 
-      issue.id === issueId ? { ...issue, status: newStatus } : issue
-    ));
+  const upvoteIssue = async (issueId: string) => {
+    try {
+      const result = await issueService.toggleUpvote(issueId);
+      setIssues((prev) =>
+        prev.map((issue) =>
+          issue.id === issueId
+            ? { ...issue, upvote_count: (issue.upvote_count ?? 0) + (result.upvoted ? 1 : -1) }
+            : issue
+        )
+      );
+    } catch (err) {
+      console.error('Failed to toggle upvote:', err);
+    }
   };
 
-  const assignIssue = (issueId: string, technicianId: string) => {
-    setIssues(prev => prev.map(issue => 
-      issue.id === issueId ? { ...issue, assignedTo: technicianId, status: 'assigned' } : issue
-    ));
+  const updateIssueStatus = async (issueId: string, newStatus: string) => {
+    try {
+      const updated = await issueService.updateIssueStatus(issueId, newStatus);
+      setIssues((prev) =>
+        prev.map((issue) => (issue.id === issueId ? { ...issue, ...updated } : issue))
+      );
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    }
+  };
+
+  const assignIssue = async (issueId: string, technicianId: string) => {
+    try {
+      const { issue } = await issueService.assignIssue(issueId, technicianId, null, null);
+      setIssues((prev) =>
+        prev.map((i) => (i.id === issueId ? { ...i, ...issue } : i))
+      );
+    } catch (err) {
+      console.error('Failed to assign issue:', err);
+    }
   };
 
   const markNotificationsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <AppContext.Provider value={{
-      currentUser,
-      issues,
-      notifications,
-      unreadCount,
-      login,
-      logout,
-      submitReport,
-      upvoteIssue,
-      updateIssueStatus,
-      assignIssue,
-      markNotificationsRead,
-      isLoading
-    }}>
+    <AppContext.Provider
+      value={{
+        currentUser,
+        issues,
+        notifications,
+        unreadCount,
+        login,
+        logout,
+        submitReport,
+        upvoteIssue,
+        updateIssueStatus,
+        assignIssue,
+        markNotificationsRead,
+        isLoading,
+        refreshIssues,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );
