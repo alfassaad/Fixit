@@ -165,13 +165,20 @@ export default function ReportSubmissionPage() {
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setLoading(true);
-    setTimeout(() => {
-      submitReport(formData);
+    try {
+      await submitReport(formData);
       setStep(4);
-      setLoading(false);
-    }, 1500);
+    } catch (error) {
+        toast({
+            title: "Error",
+            description: "There was an error submitting your report.",
+            variant: "destructive",
+        });
+    } finally {
+        setLoading(false);
+    }
   };
 
   return (

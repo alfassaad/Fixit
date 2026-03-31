@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { useAppContext } from '@/context/AppContext';
 import { useToast } from '@/hooks/use-toast';
+import { signIn } from '@/services/authService';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,8 +25,8 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await signIn({ email, password });
       login(isAdmin ? 'admin' : 'citizen');
       setLoading(false);
       toast({
@@ -33,7 +34,14 @@ export default function LoginPage() {
         description: `Welcome back! Logged in as ${isAdmin ? 'Admin' : 'Citizen'}.`,
       });
       router.push(isAdmin ? '/admin/dashboard' : '/map');
-    }, 1200);
+    } catch (error) {
+      setLoading(false);
+      toast({
+        title: "Error",
+        description: "Invalid login credentials.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleGuest = () => {
