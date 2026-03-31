@@ -1,0 +1,41 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "pothole",
+      "description": "Large pothole on road",
+      "imageUrl": "https://picsum.photos/seed/pothole/600/400",
+      "imageHint": "pothole road"
+    },
+    {
+      "id": "street-light",
+      "description": "Broken street light",
+      "imageUrl": "https://picsum.photos/seed/streetlight/600/400",
+      "imageHint": "streetlight night"
+    },
+    {
+      "id": "burst-pipe",
+      "description": "Water pipe burst on street",
+      "imageUrl": "https://picsum.photos/seed/pipe/600/400",
+      "imageHint": "water pipe"
+    },
+    {
+      "id": "garbage",
+      "description": "Overflowing garbage bins",
+      "imageUrl": "https://picsum.photos/seed/garbage/600/400",
+      "imageHint": "garbage waste"
+    },
+    {
+      "id": "broken-bench",
+      "description": "Broken park bench",
+      "imageUrl": "https://picsum.photos/seed/bench/600/400",
+      "imageHint": "park bench"
+    },
+    {
+      "id": "map-islamabad",
+      "description": "Map of Islamabad",
+      "imageUrl": "https://picsum.photos/seed/islamabad-map/1200/800",
+      "imageHint": "city map"
+    }
+  ]
+}
