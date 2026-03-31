@@ -39,7 +39,7 @@ export default function MapScreen() {
     ? issues 
     : issues.filter(i => i.category === activeCategory);
 
-  const pins = filteredIssues.map(i => ({
+  const pins = filteredIssues.filter(i => i.location).map(i => ({
     id: i.id,
     lat: i.location.lat,
     lng: i.location.lng,
