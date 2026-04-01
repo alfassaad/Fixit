@@ -78,7 +78,10 @@ export const getMyIssues = async () => {
 // Submit a new issue
 export const createIssue = async ({ title, description, category, address, latitude, longitude, priority = 'medium' }) => {
   const { data: { user } } = await supabase.auth.getUser()
- 
+  
+  // Convert latitude and longitude into the format PostGIS expects: 'POINT(longitude latitude)'
+  const location = `POINT(${longitude} ${latitude})`
+
   const { data, error } = await supabase
     .from('issues')
     .insert([{
@@ -86,16 +89,18 @@ export const createIssue = async ({ title, description, category, address, latit
       description,
       category,
       address,
-      latitude,
-      longitude,
+      location, // Use the correctly formatted location string
       priority,
       reporter_id: user?.id ?? null,
     }])
     .select()
     .single()
  
-  if (error) throw error
-  return data
+  if (error) {
+    console.error("Error creating issue:", error);
+    throw error;
+  }
+  return data;
 }
  
 // Update issue status (admin/technician)
@@ -216,3 +221,15 @@ export const submitRating = async (issueId, score, comment) => {
   if (error) throw error
   return data
 }
+
+// Listen for changes to the issues table
+export const onIssuesChange = (callback) => {
+  const subscription = supabase
+    .channel('public:issues')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'issues' }, (payload) => {
+      callback(payload);
+    })
+    .subscribe();
+
+  return subscription;
+};
