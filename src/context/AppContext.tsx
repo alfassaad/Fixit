@@ -1,4 +1,3 @@
-
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -14,8 +13,8 @@ const normalizeIssue = (row: any) => ({
   priority: row.priority,
   description: row.description,
   location: {
-    lat: row.latitude,
-    lng: row.longitude,
+    lat: row.location?.coordinates[1],
+    lng: row.location?.coordinates[0],
     address: row.address || '',
   },
   upvotes: row.upvote_count ?? 0,

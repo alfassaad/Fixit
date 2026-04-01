@@ -29,9 +29,9 @@ export default function SignUpPage() {
       setLoading(false);
       toast({
         title: "Sign Up Successful",
-        description: "Welcome to FixIt! You are now logged in.",
+        description: "Please sign in to continue.",
       });
-      router.push('/explore');
+      router.push('/login');
     } catch (error) {
       setLoading(false);
       toast({

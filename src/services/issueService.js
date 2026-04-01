@@ -9,7 +9,16 @@ export const getIssues = async ({ status, category, sortBy = 'created_at', limit
   let query = supabase
     .from('issues')
     .select(`
-      *,
+      id,
+      title,
+      description,
+      category,
+      status,
+      priority,
+      upvote_count,
+      created_at,
+      address,
+      location,
       reporter:profiles!reporter_id(id, full_name, avatar_url),
       assignee:profiles!assigned_to(id, full_name, avatar_url),
       photos:issue_photos(photo_url, photo_type)
