@@ -40,7 +40,7 @@ export default function MapScreen() {
     : issues.filter(i => i.category === activeCategory);
 
   const pins = filteredIssues.filter(i => i.location).map(i => ({
-    id: i.id,
+    id: i.issue_id, // Corrected from i.id to i.issue_id
     lat: i.location.lat,
     lng: i.location.lng,
     category: i.category,
@@ -146,7 +146,7 @@ export default function MapScreen() {
           <InteractiveMap 
             pins={pins} 
             center={mapCenter}
-            onPinClick={(pin) => setSelectedIssue(issues.find(i => i.id === pin.id))}
+            onPinClick={(pin) => setSelectedIssue(issues.find(i => i.issue_id === pin.id))}
           />
         </div>
 
@@ -183,7 +183,7 @@ export default function MapScreen() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <StatusBadge status={selectedIssue.status as any} />
-                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">#{selectedIssue.id}</span>
+                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">#{selectedIssue.issue_id}</span>
                   </div>
                   <h3 className="text-lg font-bold text-primary leading-tight">{selectedIssue.title}</h3>
                   <div className="flex items-center gap-1 text-slate-500 text-xs mt-1">
@@ -207,7 +207,7 @@ export default function MapScreen() {
                   </div>
                   <div className="text-slate-400 text-xs font-medium">Nearby</div>
                 </div>
-                <Link href={`/issues/${selectedIssue.id}`}>
+                <Link href={`/issues/${selectedIssue.issue_id}`}>
                   <Button className="rounded-xl h-10 px-6 font-bold shadow-lg bg-primary hover:bg-primary/90 flex items-center gap-1">
                     Details
                     <ChevronRight className="w-4 h-4" />

@@ -1,49 +1,75 @@
+'use client';
 
-"use client";
-
-import { use, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { 
   ArrowLeft, ThumbsUp, MapPin, Calendar, 
   MessageSquare, Share2, CheckCircle2, Circle, 
   User, Send, Camera
 } from 'lucide-react';
-import { useAppContext } from '@/context/AppContext';
-import { CATEGORIES } from '@/data/mockData';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { PriorityBadge } from '@/components/ui/PriorityBadge';
 import { CitizenLayout } from '@/components/layout/CitizenLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { PriorityBadge } from '@/components/ui/PriorityBadge';
+import { CATEGORIES } from '@/data/mockData';
 
-export default function IssueDetailPage({ params }: { params: Promise<{ id: string }> }) {
+// ... (keep the existing Report interface)
+
+export default function IssueDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { issues, upvoteIssue } = useAppContext();
-  const resolvedParams = use(params);
-  const issue = issues.find(i => i.id === resolvedParams.id);
-
+  const [issue, setIssue] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState('');
   const [voted, setVoted] = useState(false);
 
-  if (!issue) return <div className="p-20 text-center">Issue not found</div>;
+  useEffect(() => {
+    const fetchIssue = async () => {
+      if (!params.id) return;
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('issues')
+        .select('*, issue_photos(photo_url), comments(*, profiles(full_name, avatar_url)), profiles(full_name, avatar_url))')
+        .eq('issue_id', params.id)
+        .single();
 
-  const handleUpvote = () => {
+      if (error) {
+        console.error('Error fetching issue:', error);
+        router.push('/my-reports'); // Or a 404 page
+      } else {
+        setIssue(data);
+      }
+      setLoading(false);
+    };
+
+    fetchIssue();
+  }, [params.id, router]);
+
+  const handleUpvote = async () => {
     if (!voted) {
-      upvoteIssue(issue.id);
+      // Implement upvote logic with Supabase
       setVoted(true);
     }
   };
 
-  const statusSteps = [
+    const statusSteps = [
     { id: 'open', label: 'Submitted' },
     { id: 'assigned', label: 'Assigned' },
     { id: 'in_progress', label: 'In Progress' },
     { id: 'resolved', label: 'Resolved' }
   ];
 
-  const currentStepIdx = statusSteps.findIndex(s => s.id === issue.status);
+  if (loading) {
+    return <div className="p-20 text-center">Loading...</div>;
+  }
+  
+  if (!issue) return <div className="p-20 text-center">Issue not found</div>;
+
+    const currentStepIdx = statusSteps.findIndex(s => s.id === issue.status);
+
 
   return (
     <CitizenLayout>
@@ -61,8 +87,8 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Photo Carousel (Simulated) */}
         <div className="relative aspect-video bg-slate-200 overflow-hidden shrink-0">
-          {issue.photos.length > 0 ? (
-            <img src={issue.photos[0]} alt="Issue" className="w-full h-full object-cover" />
+          {issue.issue_photos && issue.issue_photos.length > 0 ? (
+            <img src={issue.issue_photos[0].photo_url} alt="Issue" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-200">
                <Camera className="w-12 h-12 mb-2 opacity-50" />
@@ -78,10 +104,10 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
           {/* Title and Stats */}
           <div className="space-y-4">
             <div className="space-y-1">
-              <h1 className="text-2xl font-black text-primary leading-tight">{issue.title}</h1>
+              <h1 className="text-2xl font-black text-primary leading-tight">{issue.description}</h1>
               <div className="flex items-center gap-1 text-slate-500 text-sm font-medium">
                 <MapPin className="w-4 h-4 text-accent" />
-                <span>{issue.location.address}</span>
+                <span>{issue.location?.address || 'No location provided'}</span>
               </div>
             </div>
 
@@ -98,7 +124,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
                 {issue.upvotes} Upvotes
               </Button>
               <div className="bg-white border border-slate-200 h-12 px-4 rounded-2xl flex items-center justify-center text-xs font-bold text-slate-400 uppercase tracking-widest">
-                #{issue.id}
+                #{issue.issue_id}
               </div>
             </div>
           </div>
@@ -156,13 +182,13 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
              </div>
              <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Reported On</div>
-                <div className="text-sm font-bold text-primary">Mar 10, 2024</div>
+                <div className="text-sm font-bold text-primary">{new Date(issue.created_at).toLocaleDateString()}</div>
              </div>
              <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Assigned To</div>
                 <div className="text-sm font-bold text-primary flex items-center gap-1">
                    <User className="w-3 h-3 text-accent" />
-                   {issue.assignedTo || 'Unassigned'}
+                   {issue.profiles?.full_name || 'Unassigned'}
                 </div>
              </div>
           </div>
@@ -175,23 +201,23 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
 
           {/* Comments */}
           <div className="space-y-4">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2">Comments ({issue.comments.length})</h3>
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2">Comments ({issue.comments?.length || 0})</h3>
             <div className="space-y-3">
-              {issue.comments.map((c, i) => (
+              {issue.comments && issue.comments.map((c: any, i: number) => (
                 <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-50 flex gap-3">
                   <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 shrink-0">
-                    {c.user[0]}
+                    {c.profiles?.full_name[0] || 'U'}
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-bold text-primary">{c.user}</span>
-                      <span className="text-[10px] text-slate-400 font-medium">2h ago</span>
+                      <span className="text-xs font-bold text-primary">{c.profiles?.full_name || 'Anonymous'}</span>
+                      <span className="text-[10px] text-slate-400 font-medium">{new Date(c.created_at).toLocaleDateString()}</span>
                     </div>
-                    <p className="text-sm text-slate-600">{c.text}</p>
+                    <p className="text-sm text-slate-600">{c.comment_text}</p>
                   </div>
                 </div>
               ))}
-              {issue.comments.length === 0 && (
+              {(!issue.comments || issue.comments.length === 0) && (
                 <div className="bg-slate-100 p-8 rounded-3xl text-center border-2 border-dashed border-slate-200">
                    <MessageSquare className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                    <p className="text-xs font-bold text-slate-400">No comments yet. Start the conversation!</p>

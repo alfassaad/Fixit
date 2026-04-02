@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from 'react';
 import { 
@@ -7,21 +7,107 @@ import {
 } from 'recharts';
 import { 
   ClipboardList, AlertCircle, CheckCircle, Clock, 
-  TrendingUp, ArrowUpRight, ArrowDownRight, MoreVertical 
+  TrendingUp, ArrowUpRight, ArrowDownRight, MoreVertical, Edit, Trash2
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { mockDashboardStats, mockChartData, mockIssues } from '@/data/mockData';
+import { mockDashboardStats, mockChartData } from '@/data/mockData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PriorityBadge } from '@/components/ui/PriorityBadge';
 import { AdminLayout } from '../../layout';
+import { getIssues, deleteIssue, onIssuesChange, updateIssue } from '@/services/issueService';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { EditIssueModal } from './EditIssueModal';
+
+// Define the type for an issue, based on your data structure
+export interface Issue {
+  issue_id: number;
+  title: string;
+  description: string;
+  status: 'new' | 'in_progress' | 'resolved' | 'closed' | 'assigned';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  assignedTo: string | null;
+  [key: string]: any; // Allow other properties
+}
 
 export default function AdminDashboard() {
   const [mounted, setMounted] = useState(false);
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
   const stats = mockDashboardStats;
 
+  const fetchIssues = async () => {
+    try {
+      const fetchedIssues = await getIssues({ limit: 10 }); // Fetch latest 10 issues
+      setIssues(fetchedIssues as Issue[]);
+    } catch (error) {
+      console.error("Error fetching issues:", error);
+    }
+  };
+  
   useEffect(() => {
     setMounted(true);
+    fetchIssues();
+
+    const subscription = onIssuesChange((payload) => {
+      const { eventType, new: newRecord, old: oldRecord } = payload;
+
+      setIssues(currentIssues => {
+        if (eventType === 'INSERT') {
+          if (currentIssues.some(issue => issue.issue_id === newRecord.issue_id)) {
+            return currentIssues;
+          }
+          return [newRecord as Issue, ...currentIssues];
+        }
+
+        if (eventType === 'UPDATE') {
+          return currentIssues.map(issue =>
+            issue.issue_id === newRecord.issue_id ? { ...issue, ...(newRecord as Issue) } : issue
+          );
+        }
+
+        if (eventType === 'DELETE') {
+          return currentIssues.filter(issue => issue.issue_id !== oldRecord.issue_id);
+        }
+
+        return currentIssues;
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  const handleDelete = async (issue_id: number) => {
+    if (confirm('Are you sure you want to delete this issue?')) {
+      try {
+        await deleteIssue(issue_id);
+        // Real-time listener will handle UI update
+      } catch (error) {
+        console.error('Failed to delete issue:', error);
+      }
+    }
+  };
+
+  const handleEdit = (issue: Issue) => {
+    setEditingIssue(issue);
+  };
+
+  const handleSaveChanges = async (issue_id: number, updates: Partial<Issue>) => {
+    if (!editingIssue) return;
+
+    try {
+      await updateIssue(issue_id, updates);
+      setEditingIssue(null); 
+    } catch (error) {
+      console.error("Failed to update issue:", error);
+    }
+  };
 
   const formatValue = (num: number) => {
     if (!mounted) return num.toString();
@@ -45,7 +131,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex gap-2">
             <button className="bg-white border border-border px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition-all">Download Report</button>
-            <button className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 shadow-md transition-all">Refresh Data</button>
+            <button onClick={fetchIssues} className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 shadow-md transition-all">Refresh Data</button>
           </div>
         </div>
 
@@ -137,30 +223,8 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Bottom Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-primary">Avg Resolution Time</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">Hours taken to resolve per category</p>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[250px]">
-                {mounted && (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={mockChartData.resolutionTime} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                      <XAxis type="number" hide />
-                      <YAxis dataKey="category" type="category" axisLine={false} tickLine={false} width={80} tick={{fontSize: 12, fill: '#64748b'}} />
-                      <Tooltip cursor={{fill: '#f8fafc'}} />
-                      <Bar dataKey="hours" fill="#2E86C1" radius={[0, 4, 4, 0]} barSize={20} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
+        {/* Recent Issues Table */}
+        <div className="grid grid-cols-1 gap-6">
           <Card className="shadow-sm overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-primary">Recent Issues</CardTitle>
@@ -175,26 +239,48 @@ export default function AdminDashboard() {
                       <th className="px-6 py-3 text-left">Status</th>
                       <th className="px-6 py-3 text-left">Priority</th>
                       <th className="px-6 py-3 text-left">Assigned</th>
+                      <th className="px-6 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {mockIssues.slice(0, 5).map((issue) => (
-                      <tr key={issue.id} className="hover:bg-slate-50/50 transition-colors">
+                    {issues.length > 0 ? issues.map((issue) => (
+                      <tr key={issue.issue_id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="font-bold text-primary truncate max-w-[150px]">{issue.title}</div>
-                          <div className="text-[10px] text-slate-400 font-medium">#{issue.id}</div>
+                          <div className="text-[10px] text-slate-400 font-medium">#{issue.issue_id}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <StatusBadge status={issue.status as any} className="scale-75 origin-left" />
+                          <StatusBadge status={issue.status} className="scale-75 origin-left" />
                         </td>
                         <td className="px-6 py-4">
-                          <PriorityBadge priority={issue.priority as any} className="scale-75 origin-left" />
+                          <PriorityBadge priority={issue.priority} className="scale-75 origin-left" />
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-xs font-semibold text-slate-600">{issue.assignedTo || 'Unassigned'}</div>
                         </td>
+                        <td className="px-6 py-4 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-2 rounded-md hover:bg-slate-100 text-slate-500">
+                                <MoreVertical size={16} />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEdit(issue)}>
+                                <Edit size={14} className="mr-2" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDelete(issue.issue_id)} className="text-red-600">
+                                <Trash2 size={14} className="mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
                       </tr>
-                    ))}
+                    )) : (
+                      <tr>
+                        <td colSpan={5} className="text-center py-8 text-slate-500">No issues found.</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -202,6 +288,14 @@ export default function AdminDashboard() {
           </Card>
         </div>
       </div>
+      
+      {editingIssue && (
+        <EditIssueModal
+          issue={editingIssue}
+          onClose={() => setEditingIssue(null)}
+          onSave={handleSaveChanges}
+        />
+      )}
     </AdminLayout>
   );
 }

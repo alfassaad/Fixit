@@ -6,7 +6,8 @@ import * as authService from '@/services/authService';
 
 // Normalize Supabase rows → shape expected by the UI
 const normalizeIssue = (row: any) => ({
-  id: row.id,
+  id: row.issue_id, // Corrected from row.id to row.issue_id
+  issue_id: row.issue_id,
   title: row.title,
   category: row.category,
   status: row.status,
@@ -31,7 +32,7 @@ interface AppContextType {
   issues: any[];
   notifications: any[];
   unreadCount: number;
-  login: (role: 'citizen' | 'admin') => void;
+  login: (credentials: authService.SignInCredentials) => void; // Updated to accept credentials
   logout: () => void;
   submitReport: (newReport: any) => void;
   upvoteIssue: (issueId: string) => void;
@@ -88,21 +89,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const login = async (role: 'citizen' | 'admin') => {
-    // For now, use demo auth via Supabase
+  const login = async (credentials: authService.SignInCredentials) => {
     try {
-      if (role === 'citizen') {
-        await authService.signIn({ email: 'citizen@demo.com', password: 'demo1234' });
-      } else {
-        await authService.signIn({ email: 'admin@demo.com', password: 'demo1234' });
-      }
+      await authService.signIn(credentials);
     } catch (err) {
-      console.error('Login failed, falling back to guest:', err);
-      // Guest: no Supabase auth, just local state
-      const guestUser = role === 'citizen'
-        ? { id: 'guest', name: 'Guest', email: 'guest@demo.com', role: 'citizen' }
-        : { id: 'guest-admin', name: 'Admin Guest', email: 'admin_guest@demo.com', role: 'admin' };
-      setCurrentUser(guestUser);
+      console.error('Login failed:', err);
+      // Handle login failure, e.g., show a toast message
+      throw err;
     }
   };
 

@@ -1,11 +1,3 @@
-{pkgs}: {
-  channel = "stable-24.05";
-  packages = [
-    pkgs.nodejs_20
-    pkgs.docker
-  ];
-...
-}
 -- Create ENUM types for roles, categories, statuses, and priorities
 CREATE TYPE user_role AS ENUM ('citizen', 'technician', 'manager', 'admin', 'super_admin');
 CREATE TYPE issue_category AS ENUM ('Roads & Potholes', 'Street Lighting', 'Water & Drainage', 'Waste Management', 'Parks', 'Other');
@@ -37,7 +29,7 @@ CREATE TABLE profiles (
 -- Create issues table
 CREATE TABLE issues (
   issue_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  reporter_id UUID REFERENCES auth.users(id),
+  reporter_id UUID REFERENCES profiles(user_id),
   category issue_category NOT NULL,
   title VARCHAR(200) NOT NULL,
   description TEXT,
@@ -47,7 +39,7 @@ CREATE TABLE issues (
   priority issue_priority DEFAULT 'medium',
   priority_score FLOAT DEFAULT 0,
   upvote_count INTEGER DEFAULT 0,
-  assigned_to UUID REFERENCES auth.users(id),
+  assigned_to UUID REFERENCES profiles(user_id),
   resolved_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -56,7 +48,7 @@ CREATE TABLE issues (
 CREATE TABLE issue_photos (
   photo_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   issue_id UUID REFERENCES issues(issue_id) ON DELETE CASCADE,
-  uploader_id UUID REFERENCES auth.users(id),
+  uploader_id UUID REFERENCES profiles(user_id),
   photo_url TEXT NOT NULL,
   photo_type photo_type NOT NULL,
   uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -66,8 +58,8 @@ CREATE TABLE issue_photos (
 CREATE TABLE tasks (
   task_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   issue_id UUID REFERENCES issues(issue_id) ON DELETE CASCADE,
-  assigned_to UUID REFERENCES auth.users(id),
-  assigned_by UUID REFERENCES auth.users(id),
+  assigned_to UUID REFERENCES profiles(user_id),
+  assigned_by UUID REFERENCES profiles(user_id),
   due_date TIMESTAMP WITH TIME ZONE NOT NULL,
   notes TEXT,
   completed_at TIMESTAMP WITH TIME ZONE
@@ -76,7 +68,7 @@ CREATE TABLE tasks (
 -- Create notifications table
 CREATE TABLE notifications (
   notif_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(user_id) ON DELETE CASCADE,
   issue_id UUID REFERENCES issues(issue_id) ON DELETE CASCADE,
   type notification_type NOT NULL,
   message TEXT NOT NULL,
@@ -86,7 +78,7 @@ CREATE TABLE notifications (
 
 -- Create issue_upvotes table
 CREATE TABLE issue_upvotes (
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(user_id) ON DELETE CASCADE,
   issue_id UUID REFERENCES issues(issue_id) ON DELETE CASCADE,
   PRIMARY KEY (user_id, issue_id)
 );

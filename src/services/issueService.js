@@ -2,14 +2,14 @@
 // src/services/issueService.js
 // ============================================================
  
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase.js'
  
 // Fetch all issues (with filters)
 export const getIssues = async ({ status, category, sortBy = 'created_at', limit = 20, offset = 0 } = {}) => {
   let query = supabase
     .from('issues')
     .select(`
-      id,
+      issue_id,
       title,
       description,
       category,
@@ -19,8 +19,8 @@ export const getIssues = async ({ status, category, sortBy = 'created_at', limit
       created_at,
       address,
       location,
-      reporter:profiles!reporter_id(id, full_name, avatar_url),
-      assignee:profiles!assigned_to(id, full_name, avatar_url),
+      reporter:profiles!reporter_id(user_id, full_name, avatar_url),
+      assignee:profiles!assigned_to(user_id, full_name, avatar_url),
       photos:issue_photos(photo_url, photo_type)
     `)
     .order(sortBy, { ascending: false })
@@ -35,18 +35,18 @@ export const getIssues = async ({ status, category, sortBy = 'created_at', limit
 }
  
 // Fetch single issue by ID
-export const getIssueById = async (id) => {
+export const getIssueById = async (issue_id) => {
   const { data, error } = await supabase
     .from('issues')
     .select(`
       *,
-      reporter:profiles!reporter_id(id, full_name, avatar_url),
-      assignee:profiles!assigned_to(id, full_name, avatar_url),
-      photos:issue_photos(id, photo_url, photo_type, uploaded_at),
-      comments(id, content, created_at, user:profiles(id, full_name, avatar_url)),
+      reporter:profiles!reporter_id(user_id, full_name, avatar_url),
+      assignee:profiles!assigned_to(user_id, full_name, avatar_url),
+      photos:issue_photos(photo_id, photo_url, photo_type, uploaded_at),
+      comments(comment_id, comment_text, created_at, user:profiles(user_id, full_name, avatar_url)),
       ratings(score, comment)
     `)
-    .eq('id', id)
+    .eq('issue_id', issue_id)
     .single()
  
   if (error) throw error
@@ -57,7 +57,7 @@ export const getIssueById = async (id) => {
 export const getIssuesForMap = async ({ minLat, maxLat, minLng, maxLng }) => {
   const { data, error } = await supabase
     .from('issues')
-    .select('id, title, category, status, priority, latitude, longitude, upvote_count')
+    .select('issue_id, title, description, category, status, priority, latitude, longitude, upvote_count')
     .gte('latitude', minLat)
     .lte('latitude', maxLat)
     .gte('longitude', minLng)
@@ -113,14 +113,14 @@ export const createIssue = async ({ title, description, category, address, latit
 }
  
 // Update issue status (admin/technician)
-export const updateIssueStatus = async (id, status) => {
+export const updateIssueStatus = async (issue_id, status) => {
   const updates = { status }
   if (status === 'resolved') updates.resolved_at = new Date().toISOString()
  
   const { data, error } = await supabase
     .from('issues')
     .update(updates)
-    .eq('id', id)
+    .eq('issue_id', issue_id)
     .select()
     .single()
  
@@ -129,12 +129,12 @@ export const updateIssueStatus = async (id, status) => {
 }
  
 // Assign issue to technician
-export const assignIssue = async (issueId, technicianId, dueDate, notes) => {
+export const assignIssue = async (issue_id, technicianId, dueDate, notes) => {
   // Update issue
   const { data: issue, error: issueError } = await supabase
     .from('issues')
     .update({ assigned_to: technicianId, status: 'assigned' })
-    .eq('id', issueId)
+    .eq('issue_id', issue_id)
     .select()
     .single()
  
@@ -145,7 +145,7 @@ export const assignIssue = async (issueId, technicianId, dueDate, notes) => {
   const { data: task, error: taskError } = await supabase
     .from('tasks')
     .insert([{
-      issue_id: issueId,
+      issue_id: issue_id,
       assigned_to: technicianId,
       assigned_by: user.id,
       due_date: dueDate,
@@ -159,7 +159,7 @@ export const assignIssue = async (issueId, technicianId, dueDate, notes) => {
 }
  
 // Toggle upvote
-export const toggleUpvote = async (issueId) => {
+export const toggleUpvote = async (issue_id) => {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Must be logged in to upvote')
  
@@ -168,7 +168,7 @@ export const toggleUpvote = async (issueId) => {
     .from('issue_upvotes')
     .select('*')
     .eq('user_id', user.id)
-    .eq('issue_id', issueId)
+    .eq('issue_id', issue_id)
     .single()
  
   if (existing) {
@@ -177,21 +177,21 @@ export const toggleUpvote = async (issueId) => {
       .from('issue_upvotes')
       .delete()
       .eq('user_id', user.id)
-      .eq('issue_id', issueId)
+      .eq('issue_id', issue_id)
     if (error) throw error
     return { upvoted: false }
   } else {
     // Add upvote
     const { error } = await supabase
       .from('issue_upvotes')
-      .insert([{ user_id: user.id, issue_id: issueId }])
+      .insert([{ user_id: user.id, issue_id: issue_id }])
     if (error) throw error
     return { upvoted: true }
   }
 }
  
 // Check if user has upvoted an issue
-export const hasUpvoted = async (issueId) => {
+export const hasUpvoted = async (issue_id) => {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
  
@@ -199,19 +199,19 @@ export const hasUpvoted = async (issueId) => {
     .from('issue_upvotes')
     .select('*')
     .eq('user_id', user.id)
-    .eq('issue_id', issueId)
+    .eq('issue_id', issue_id)
     .single()
  
   return !!data
 }
  
 // Add a comment
-export const addComment = async (issueId, content) => {
+export const addComment = async (issue_id, content) => {
   const { data: { user } } = await supabase.auth.getUser()
   const { data, error } = await supabase
     .from('comments')
-    .insert([{ issue_id: issueId, user_id: user.id, content }])
-    .select(`*, user:profiles(id, full_name, avatar_url)`)
+    .insert([{ issue_id: issue_id, user_id: user.id, content }])
+    .select(`*, user:profiles(user_id, full_name, avatar_url)`)
     .single()
  
   if (error) throw error
@@ -219,16 +219,46 @@ export const addComment = async (issueId, content) => {
 }
  
 // Submit rating
-export const submitRating = async (issueId, score, comment) => {
+export const submitRating = async (issue_id, score, comment) => {
   const { data: { user } } = await supabase.auth.getUser()
   const { data, error } = await supabase
     .from('ratings')
-    .insert([{ issue_id: issueId, user_id: user.id, score, comment }])
+    .insert([{ issue_id: issue_id, user_id: user.id, score, comment }])
     .select()
     .single()
  
   if (error) throw error
   return data
+}
+
+// Update an issue (generic, for admins)
+export const updateIssue = async (issue_id, updates) => {
+  const { data, error } = await supabase
+    .from('issues')
+    .update(updates)
+    .eq('issue_id', issue_id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating issue:', error)
+    throw error
+  }
+  return data
+}
+
+// Delete an issue (for admins)
+export const deleteIssue = async (issue_id) => {
+  const { error } = await supabase
+    .from('issues')
+    .delete()
+    .eq('issue_id', issue_id)
+
+  if (error) {
+    console.error('Error deleting issue:', error)
+    throw error
+  }
+  return
 }
 
 // Listen for changes to the issues table

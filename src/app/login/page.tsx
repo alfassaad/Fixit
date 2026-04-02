@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { useAppContext } from '@/context/AppContext';
 import { useToast } from '@/hooks/use-toast';
-import { signIn } from '@/services/authService';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -27,8 +26,7 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      await signIn({ email, password });
-      login(isAdmin ? 'admin' : 'citizen');
+      await login({ email, password }); // Corrected to only use the context login function
       setLoading(false);
       toast({
         title: "Login Successful",
@@ -46,7 +44,8 @@ export default function LoginPage() {
   };
 
   const handleGuest = () => {
-    login('citizen');
+    // For guest login, you might want to create a guest session or use a default guest account
+    // For this example, we'll just redirect to the map
     router.push('/map');
   };
 

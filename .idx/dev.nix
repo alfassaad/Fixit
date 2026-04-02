@@ -1,10 +1,12 @@
+
 {pkgs}: {
   channel = "stable-24.05";
   packages = [
     pkgs.nodejs_20
+    pkgs.docker
   ];
   idx.extensions = [
-    
+
   ];
   idx.previews = {
     previews = {
@@ -23,4 +25,7 @@
       };
     };
   };
+
+  # Enable the Docker daemon
+  services.docker.enable = true;
 }
