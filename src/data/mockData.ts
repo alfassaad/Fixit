@@ -132,6 +132,10 @@ export const mockNotifications = [
   { id: 2, type: "comment", title: "New comment on your report", message: "A team member commented on ISS-001.", time: "5 hours ago", read: false, issueId: "ISS-001" },
   { id: 3, type: "resolved", title: "Issue Resolved! 🎉", message: "ISS-003 has been marked as resolved.", time: "1 day ago", read: true, issueId: "ISS-003" },
   { id: 4, type: "escalation", title: "Report escalated", message: "ISS-002 has been escalated due to SLA breach.", time: "2 days ago", read: true, issueId: "ISS-002" },
+  { id: 5, type: "chat",    title: "New message from Ali Hassan", message: "ISS-001 pothole repair starting tomorrow.", time: "10 min ago", read: false, issueId: "ISS-001" },
+  { id: 6, type: "mention", title: "You were mentioned",          message: "Admin mentioned you in General Chat.",       time: "25 min ago", read: false, issueId: null },
+  { id: 7, type: "sla",     title: "SLA Breach Warning",          message: "ISS-002 is approaching its 72hr deadline.", time: "1 hr ago",   read: false, issueId: "ISS-002" },
+  { id: 8, type: "upvote",  title: "Your report gained traction", message: "ISS-001 now has 50+ upvotes.",              time: "2 hrs ago",  read: true,  issueId: "ISS-001" }
 ];
 
 export const mockDashboardStats = {
@@ -174,4 +178,53 @@ export const mockTechnicians = [
   { id: "T002", name: "Bilal Raza", department: "Water", activeTasks: 2, resolved: 38 },
   { id: "T003", name: "Kamran Shah", department: "Waste", activeTasks: 4, resolved: 29 },
   { id: "T004", name: "Tariq Mehmood", department: "Roads", activeTasks: 1, resolved: 61 },
+];
+
+export const mockChatMessages = [
+  { id: 1, roomId: "general", senderId: "T001", senderName: "Ali Hassan", senderRole: "technician",
+    message: "ISS-001 pothole repair starting tomorrow morning.", time: "2024-03-13T09:00:00Z", mentions: [] },
+  { id: 2, roomId: "general", senderId: "ADM-001", senderName: "Admin User", senderRole: "admin",
+    message: "Good. @Ali Hassan please upload before photos first.", time: "2024-03-13T09:05:00Z", mentions: ["T001"] },
+  { id: 3, roomId: "ISS-002", senderId: "T002", senderName: "Bilal Raza", senderRole: "technician",
+    message: "Lights replacement parts ordered, ETA 2 days.", time: "2024-03-13T10:00:00Z", mentions: [] },
+  { id: 4, roomId: "ISS-002", senderId: "ADM-001", senderName: "Admin User", senderRole: "admin",
+    message: "Escalating ISS-002 — SLA breached. @Bilal Raza expedite please.", time: "2024-03-13T11:00:00Z", mentions: ["T002"] },
+  { id: 5, roomId: "dm-T001", senderId: "ADM-001", senderName: "Admin User", senderRole: "admin",
+    message: "Ali, can you take on ISS-005 today as well?", time: "2024-03-13T12:00:00Z", mentions: [] },
+  { id: 6, roomId: "dm-T001", senderId: "T001", senderName: "Ali Hassan", senderRole: "technician",
+    message: "Yes, I\'ll head there after finishing ISS-001.", time: "2024-03-13T12:10:00Z", mentions: [] },
+];
+
+export const mockDMThreads = [
+  { id: "dm-T001", participantId: "T001", participantName: "Ali Hassan", participantRole: "technician",
+    lastMessage: "Yes, I\'ll head there after finishing ISS-001.", lastTime: "2024-03-13T12:10:00Z", unread: 0 },
+  { id: "dm-T002", participantId: "T002", participantName: "Bilal Raza", participantRole: "technician",
+    lastMessage: "Lights replacement parts ordered, ETA 2 days.", lastTime: "2024-03-13T10:00:00Z", unread: 2 },
+  { id: "dm-T003", participantId: "T003", participantName: "Kamran Shah", participantRole: "technician",
+    lastMessage: "Waste collection scheduled for tomorrow.", lastTime: "2024-03-12T15:00:00Z", unread: 0 },
+];
+
+export const mockPerformanceData = [
+  { name: "Ali Hassan",    assigned: 12, completed: 10, avgHours: 36, rating: 4.7, department: "Roads" },
+  { name: "Bilal Raza",   assigned: 9,  completed: 7,  avgHours: 42, rating: 4.2, department: "Water" },
+  { name: "Kamran Shah",  assigned: 14, completed: 9,  avgHours: 58, rating: 3.8, department: "Waste" },
+  { name: "Tariq Mehmood",assigned: 8,  completed: 8,  avgHours: 28, rating: 4.9, department: "Roads" },
+];
+
+export const mockActivityFeed = [
+  { id: 1, type: "resolved",  actor: "Ali Hassan",  action: "resolved",       target: "ISS-001", time: "10 min ago" },
+  { id: 2, type: "assigned",  actor: "Admin User",  action: "assigned",       target: "ISS-004 to Kamran Shah", time: "1 hr ago" },
+  { id: 3, type: "new",       actor: "Sara Ahmed",  action: "submitted",      target: "ISS-007", time: "2 hrs ago" },
+  { id: 4, type: "escalated", actor: "System",      action: "auto-escalated", target: "ISS-002", time: "3 hrs ago" },
+  { id: 5, type: "comment",   actor: "Haris Zafar", action: "commented on",   target: "ISS-001", time: "4 hrs ago" },
+];
+
+export const mockWidgets = [
+  { id: "w1", label: "Open Issues",            enabled: true  },
+  { id: "w2", label: "Monthly Trend",          enabled: true  },
+  { id: "w3", label: "Category Breakdown",     enabled: true  },
+  { id: "w4", label: "Technician Performance", enabled: true  },
+  { id: "w5", label: "Resolution Time",        enabled: false },
+  { id: "w6", label: "Activity Feed",          enabled: true  },
+  { id: "w7", label: "SLA Breach Risk",        enabled: false },
 ];

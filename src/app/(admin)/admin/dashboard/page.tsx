@@ -13,7 +13,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { mockDashboardStats, mockChartData } from '@/data/mockData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PriorityBadge } from '@/components/ui/PriorityBadge';
-import { AdminLayout } from '../../layout';
 import { getIssues, deleteIssue, onIssuesChange, updateIssue } from '@/services/issueService';
 import {
   DropdownMenu,
@@ -122,7 +121,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <AdminLayout>
+    <>
       <div className="p-8 space-y-8 animate-in fade-in duration-500">
         <div className="flex justify-between items-end">
           <div>
@@ -296,6 +295,6 @@ export default function AdminDashboard() {
           onSave={handleSaveChanges}
         />
       )}
-    </AdminLayout>
+    </>
   );
 }
