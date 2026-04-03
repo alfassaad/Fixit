@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Issue } from './page'; 
+import { Issue } from './types'; 
 import { X } from 'lucide-react';
 
 interface EditIssueModalProps {
