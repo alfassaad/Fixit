@@ -10,6 +10,11 @@ import {
   TrendingUp, ArrowUpRight, ArrowDownRight, MoreVertical, Edit, Trash2
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { useAppContext } from '@/context/AppContext';
+import { TechnicianPerformance } from '@/components/charts/TechnicianPerformance';
+import { SLAGauges } from '@/components/charts/SLAGauges';
+import { ActivityFeed } from '@/components/charts/ActivityFeed';
+import { WidgetCustomizer } from '@/components/dashboard/WidgetCustomizer';
 import { mockDashboardStats, mockChartData } from '@/data/mockData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PriorityBadge } from '@/components/ui/PriorityBadge';
@@ -24,9 +29,11 @@ import { EditIssueModal } from './EditIssueModal';
 import { Issue } from './types';
 
 export default function AdminDashboard() {
+  const { enabledWidgets } = useAppContext() as any;
   const [mounted, setMounted] = useState(false);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
+  const [customizerOpen, setCustomizerOpen] = useState(false);
   const stats = mockDashboardStats;
 
   const fetchIssues = async () => {
@@ -119,6 +126,7 @@ export default function AdminDashboard() {
             <p className="text-muted-foreground mt-1">Real-time overview of civic infrastructure reports</p>
           </div>
           <div className="flex gap-2">
+            <button onClick={() => setCustomizerOpen(true)} className="bg-white border border-border px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition-all">Customize Dashboard</button>
             <button className="bg-white border border-border px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition-all">Download Report</button>
             <button onClick={fetchIssues} className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 shadow-md transition-all">Refresh Data</button>
           </div>
@@ -211,6 +219,25 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* New Dashboard Widgets */}
+        <div className="grid grid-cols-1 gap-6">
+          {enabledWidgets.find((w: any) => w.id === 'w4')?.enabled && <TechnicianPerformance />}
+          {enabledWidgets.find((w: any) => w.id === 'w7')?.enabled && <SLAGauges />}
+          {enabledWidgets.find((w: any) => w.id === 'w6')?.enabled && <ActivityFeed />}
+        </div>
+
+        {customizerOpen && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex justify-end">
+            <div className="w-full md:w-96 bg-white h-full p-6 overflow-auto transition-transform duration-300">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">Widget Customizer</h3>
+                <button onClick={() => setCustomizerOpen(false)} className="text-slate-500">Close</button>
+              </div>
+              <WidgetCustomizer />
+            </div>
+          </div>
+        )}
 
         {/* Recent Issues Table */}
         <div className="grid grid-cols-1 gap-6">

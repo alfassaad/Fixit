@@ -2,13 +2,22 @@
 -- supabase/migrations/20240715130000_add_crud_policies.sql
 -- ============================================================
 
+-- Function to read custom claims safely
+CREATE OR REPLACE FUNCTION public.get_my_claim(claim text) RETURNS text
+LANGUAGE sql STABLE
+AS $$
+  SELECT coalesce(
+    nullif(current_setting('request.jwt.claim.' || claim, true), ''),
+    (nullif(current_setting('request.jwt.claims', true), '')::jsonb -> 'app_metadata' ->> claim),
+    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> claim)
+  );
+$$;
+
 -- Enable Row Level Security for all tables
 ALTER TABLE public.issues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.issue_photos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.issue_upvotes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.ratings ENABLE ROW LEVEL SECURITY;
 
 -- Policies for 'issues' table
 
@@ -32,7 +41,7 @@ CREATE POLICY "Admins can update any issue" ON public.issues
 DROP POLICY IF EXISTS "Users can update their own issues" ON public.issues;
 CREATE POLICY "Users can update their own issues" ON public.issues
   FOR UPDATE USING (auth.uid() = reporter_id)
-  WITH CHECK (auth.uid() = reporter_id AND status <> ALL (ARRAY['resolved', 'closed']));
+  WITH CHECK (auth.uid() = reporter_id AND status <> ALL (ARRAY['resolved', 'closed']::public.issue_status[]));
 
 -- 5. Allow admins to delete any issue
 DROP POLICY IF EXISTS "Admins can delete any issue" ON public.issues;
@@ -63,16 +72,6 @@ CREATE POLICY "Admins can delete tasks" ON public.tasks
   FOR DELETE USING (get_my_claim('role') = 'admin');
 
 -- Policies for other tables (for completeness)
-
--- 'comments'
-DROP POLICY IF EXISTS "Public can read all comments" ON public.comments;
-CREATE POLICY "Public can read all comments" ON public.comments
-  FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Authenticated users can create comments" ON public.comments;
-CREATE POLICY "Authenticated users can create comments" ON public.comments
-  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-
 -- 'issue_photos'
 DROP POLICY IF EXISTS "Public can read all issue photos" ON public.issue_photos;
 CREATE POLICY "Public can read all issue photos" ON public.issue_photos

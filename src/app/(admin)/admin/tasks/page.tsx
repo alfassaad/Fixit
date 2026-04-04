@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 
 export default function AdminTasks() {
   const { issues, updateIssueStatus } = useAppContext();
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskDraft, setTaskDraft] = useState<any>(null);
   
   const columns = [
     { id: 'open', title: 'Unassigned', color: 'bg-red-500', header: 'border-t-red-500' },
@@ -80,19 +82,20 @@ export default function AdminTasks() {
 
               <div className="flex-1 space-y-4 overflow-y-auto pr-1 no-scrollbar min-h-[500px]">
                 {columnIssues.map((issue) => (
-                  <div 
-                    key={issue.id}
-                    draggable
-                    onDragStart={() => handleDragStart(issue.id)}
-                    className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-accent/30 transition-all cursor-grab active:cursor-grabbing group animate-in fade-in slide-in-from-bottom duration-300"
-                  >
+                  <div key={issue.id} draggable onDragStart={() => handleDragStart(issue.id)} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-accent/30 transition-all cursor-grab active:cursor-grabbing group animate-in fade-in slide-in-from-bottom duration-300">
                     <div className="flex justify-between items-start mb-3">
-                       <div className="text-[10px] font-bold text-slate-400 tracking-widest">#{issue.id}</div>
-                       <PriorityBadge priority={issue.priority as any} className="scale-75 origin-right" />
+                      <div className="text-[10px] font-bold text-slate-400 tracking-widest">#{issue.id}</div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => {
+                          setEditingTaskId(issue.id);
+                          setTaskDraft({ ...issue });
+                        }} className="text-slate-500 hover:text-primary text-xs border border-slate-200 px-2 py-1 rounded-lg">Edit</button>
+                        <PriorityBadge priority={issue.priority as any} className="scale-75 origin-right" />
+                      </div>
                     </div>
-                    
+
                     <h4 className="font-bold text-primary leading-tight mb-2 group-hover:text-accent transition-colors">{issue.title}</h4>
-                    
+
                     <div className="flex items-center gap-1.5 mb-4">
                       <div className="w-6 h-6 bg-slate-50 rounded flex items-center justify-center text-sm shadow-sm border border-white">
                         {CATEGORIES.find(c => c.name === issue.category)?.icon}
@@ -102,22 +105,53 @@ export default function AdminTasks() {
 
                     <div className="flex items-center justify-between pt-3 border-t border-slate-50">
                       <div className="flex items-center gap-3">
-                         <div className="flex items-center gap-1 text-slate-400">
-                           <ThumbsUp className="w-3 h-3" />
-                           <span className="text-[10px] font-bold">{issue.upvotes}</span>
-                         </div>
-                         <div className="flex items-center gap-1 text-slate-400">
-                           <MessageSquare className="w-3 h-3" />
-                           <span className="text-[10px] font-bold">{issue.comments.length}</span>
-                         </div>
+                        <div className="flex items-center gap-1 text-slate-400">
+                          <ThumbsUp className="w-3 h-3" />
+                          <span className="text-[10px] font-bold">{issue.upvotes}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-slate-400">
+                          <MessageSquare className="w-3 h-3" />
+                          <span className="text-[10px] font-bold">{issue.comments.length}</span>
+                        </div>
                       </div>
-                      
+
                       <div className="flex -space-x-2">
                         <div className="w-6 h-6 rounded-full bg-accent border-2 border-white flex items-center justify-center text-[10px] text-white font-bold">
-                           {issue.assignedTo ? issue.assignedTo[0] : <User className="w-3 h-3" />}
+                          {issue.assignedTo ? issue.assignedTo[0] : <User className="w-3 h-3" />}
                         </div>
                       </div>
                     </div>
+
+                    {editingTaskId === issue.id && taskDraft && (
+                      <div className="mt-3 p-3 border border-slate-200 rounded-xl bg-slate-50">
+                        <input
+                          className="w-full border p-2 rounded-lg mb-2"
+                          value={taskDraft.title}
+                          onChange={(e) => setTaskDraft((prev: any) => ({ ...prev, title: e.target.value }))}
+                        />
+                        <select className="w-full border p-2 rounded-lg mb-2" value={taskDraft.status} onChange={(e) => setTaskDraft((prev: any) => ({ ...prev, status: e.target.value }))}>
+                          <option value="open">Open</option>
+                          <option value="assigned">Assigned</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="resolved">Resolved</option>
+                        </select>
+                        <select className="w-full border p-2 rounded-lg mb-2" value={taskDraft.priority} onChange={(e) => setTaskDraft((prev: any) => ({ ...prev, priority: e.target.value }))}>
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                          <option value="critical">Critical</option>
+                        </select>
+                        <input className="w-full border p-2 rounded-lg mb-2" type="date" value={taskDraft.dueDate || ''} onChange={(e) => setTaskDraft((prev: any) => ({ ...prev, dueDate: e.target.value }))} />
+                        <textarea className="w-full border p-2 rounded-lg mb-2" value={taskDraft.notes || ''} onChange={(e) => setTaskDraft((prev: any) => ({ ...prev, notes: e.target.value }))} placeholder="Notes" />
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => setEditingTaskId(null)} className="text-xs text-slate-600">Cancel</button>
+                          <button onClick={() => {
+                              updateIssueStatus(issue.id, taskDraft.status);
+                              setEditingTaskId(null);
+                            }} className="text-xs text-white bg-primary px-3 py-1 rounded-lg">Save</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
                 

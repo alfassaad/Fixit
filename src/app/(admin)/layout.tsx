@@ -1,23 +1,42 @@
 
 "use client";
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, ClipboardList, Briefcase, 
-  Users, BarChart3, Settings, LogOut, Wrench, Menu, Bell
+import {
+  LayoutDashboard, ClipboardList, Briefcase,
+  Users, BarChart3, Settings, LogOut, Wrench, Menu, Bell, MessageCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppContext } from '@/context/AppContext';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { LogoutDialog } from '@/components/layout/LogoutDialog';
 
-export function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { logout, currentUser } = useAppContext();
+  const { logout, currentUser, unreadCount } = useAppContext();
+  const [collapsed, setCollapsed] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const navItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
     { label: 'All Issues', icon: ClipboardList, path: '/admin/issues' },
     { label: 'Tasks', icon: Briefcase, path: '/admin/tasks' },
+    { label: 'Chat', icon: MessageCircle, path: '/admin/chat' },
+    { label: 'Notifications', icon: Bell, path: '/admin/notifications', badge: unreadCount },
     { label: 'Users', icon: Users, path: '/admin/users' },
     { label: 'Analytics', icon: BarChart3, path: '/admin/analytics' },
     { label: 'Settings', icon: Settings, path: '/admin/settings' },
@@ -26,7 +45,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-body">
       {/* Sidebar */}
-      <aside className="w-72 bg-primary text-white flex flex-col hidden lg:flex shadow-2xl z-50">
+      <aside className={`bg-primary text-white flex flex-col hidden lg:flex shadow-2xl z-50 transition-width duration-300 ease-in-out ${collapsed ? 'w-20' : 'w-72'}`}>
         <div className="p-8 flex items-center gap-3">
           <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
             <Wrench className="w-6 h-6 text-accent" />
@@ -34,23 +53,29 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           <span className="text-2xl font-black tracking-tight">FixIt Admin</span>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 mt-4">
+        <nav className="flex-1 px-2 space-y-2 mt-4">
           {navItems.map((item) => {
             const isActive = pathname === item.path;
             return (
-              <Link 
-                key={item.path} 
+              <Link
+                key={item.path}
                 href={item.path}
+                title={collapsed ? item.label : ''}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group",
-                  isActive 
-                    ? "bg-accent text-white shadow-lg shadow-accent/20 font-bold" 
+                  "flex items-center gap-3 px-3 py-3.5 rounded-xl transition-all duration-200 group",
+                  isActive
+                    ? "bg-accent text-white shadow-lg shadow-accent/20 font-bold"
                     : "text-slate-300 hover:bg-white/5 hover:text-white"
                 )}
               >
                 <item.icon className={cn("w-5 h-5", isActive ? "text-white" : "text-slate-400 group-hover:text-white")} />
-                <span>{item.label}</span>
-                {isActive && (
+                {!collapsed && <span>{item.label}</span>}
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="ml-auto bg-destructive text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {item.badge}
+                  </span>
+                )}
+                {isActive && !collapsed && (
                   <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full"></div>
                 )}
               </Link>
@@ -63,16 +88,35 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center font-bold text-lg border-2 border-white/20">
               {currentUser?.name?.[0] || 'A'}
             </div>
-            <div>
-              <div className="font-bold text-sm truncate max-w-[120px]">{currentUser?.name || 'Admin'}</div>
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{currentUser?.department || 'Operations'}</div>
-            </div>
+            {!collapsed && (
+              <div>
+                <div className="font-bold text-sm truncate max-w-[120px]">{currentUser?.name || 'Admin'}</div>
+                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{currentUser?.department || 'Operations'}</div>
+              </div>
+            )}
           </div>
-          <button 
-            onClick={logout}
+          <LogoutDialog>
+            <button
+              title={collapsed ? "Sign Out" : ""}
+              className={cn(
+                "flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 transition-colors py-2.5 rounded-xl text-sm font-bold",
+                collapsed ? "w-12 mx-auto" : "w-full"
+              )}
+            >
+              <LogOut className="w-4 h-4" />
+              {!collapsed && <span>Sign Out</span>}
+            </button>
+          </LogoutDialog>
+        </div>
+
+        <div className="px-4 pb-4">
+          <button
+            onClick={() => setCollapsed((prev) => !prev)}
             className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 transition-colors py-2.5 rounded-xl text-sm font-bold"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <LogOut className="w-4 h-4" /> Sign Out
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            {!collapsed && <span>{collapsed ? 'Expand' : 'Collapse'}</span>}
           </button>
         </div>
       </aside>
@@ -93,6 +137,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 </svg>
               </div>
               <input 
+                ref={searchInputRef}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
                 type="text" 
                 placeholder="Search database..." 
                 className="w-full bg-slate-50 border-none rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-accent transition-all"
@@ -100,10 +147,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
            </div>
 
            <div className="flex items-center gap-4">
-              <button className="relative p-2 hover:bg-slate-50 rounded-full transition-colors group">
-                 <Bell className="w-5 h-5 text-slate-500 group-hover:text-primary" />
-                 <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full border-2 border-white"></span>
-              </button>
+              <div className="relative group">
+                 <NotificationCenter />
+              </div>
               <div className="h-8 w-px bg-slate-200"></div>
               <div className="flex items-center gap-2">
                  <div className="text-right hidden sm:block">

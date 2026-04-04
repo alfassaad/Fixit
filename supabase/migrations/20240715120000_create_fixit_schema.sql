@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA extensions;
+
 -- Create ENUM types for roles, categories, statuses, and priorities
 CREATE TYPE user_role AS ENUM ('citizen', 'technician', 'manager', 'admin', 'super_admin');
 CREATE TYPE issue_category AS ENUM ('Roads & Potholes', 'Street Lighting', 'Water & Drainage', 'Waste Management', 'Parks', 'Other');
@@ -33,7 +35,7 @@ CREATE TABLE issues (
   category issue_category NOT NULL,
   title VARCHAR(200) NOT NULL,
   description TEXT,
-  location GEOMETRY(Point, 4326),
+  location extensions.geometry(Point, 4326),
   address TEXT NOT NULL,
   status issue_status DEFAULT 'open',
   priority issue_priority DEFAULT 'medium',

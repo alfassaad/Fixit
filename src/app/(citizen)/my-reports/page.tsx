@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
+import CitizenFilterDrawer from '@/components/filters/CitizenFilterDrawer';
+import FilterChips from '@/components/filters/FilterChips';
 interface Report {
   issue_id: string;
   title: string;
@@ -109,6 +110,12 @@ export default function MyReportsPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [editingReport, setEditingReport] = useState<Report | null>(null);
+  const [filters, setFilters] = useState({
+    status: [] as string[],
+    category: [] as string[],
+    priority: [] as string[],
+    sortBy: 'newest'
+  });
   const router = useRouter();
   const { toast } = useToast();
 
@@ -195,6 +202,19 @@ export default function MyReportsPage() {
     }
   };
 
+  const filteredReports = reports
+    .filter((report) => {
+      const matchesStatus = filters.status.length === 0 || filters.status.includes(report.status.toLowerCase().replace('_', ' '));
+      const matchesCategory = filters.category.length === 0 || filters.category.includes(report.category);
+      const matchesPriority = filters.priority.length === 0 || filters.priority.includes((report as any).priority || 'medium');
+      return matchesStatus && matchesCategory && matchesPriority;
+    })
+    .sort((a, b) => {
+      if (filters.sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      if (filters.sortBy === 'upvotes') return ((b as any).upvotes || 0) - ((a as any).upvotes || 0);
+      return 0;
+    });
+
   const ReportsSkeleton = () => (
     <div className="space-y-4">
       {[...Array(2)].map((_, i) => (
@@ -226,14 +246,21 @@ export default function MyReportsPage() {
   return (
     <CitizenLayout>
       <div className="container mx-auto p-4">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-3">
           <h1 className="text-2xl font-bold">My Reports</h1>
+          <div className="flex items-center gap-2">
+            <CitizenFilterDrawer filters={filters as any} setFilters={setFilters as any} />
+            <div className="text-xs text-slate-500">My Reports Only: On</div>
+          </div>
         </div>
+
+        <FilterChips filters={filters} setFilters={setFilters as any} />
+
         {loading ? (
           <ReportsSkeleton />
-        ) : reports.length > 0 ? (
+        ) : filteredReports.length > 0 ? (
           <div className="space-y-4">
-            {reports.map((report) => (
+            {filteredReports.map((report) => (
               <Card key={report.issue_id}>
                 <CardHeader>
                   <CardTitle>{report.title}</CardTitle>

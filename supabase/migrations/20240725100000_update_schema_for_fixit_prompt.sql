@@ -47,16 +47,16 @@ CREATE TABLE IF NOT EXISTS public.departments (
   "departmentId" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   "name" text NOT NULL,
   "category" text NOT NULL UNIQUE,
-  "managerId" uuid REFERENCES public.users(id) ON DELETE SET NULL,
+  "managerId" uuid REFERENCES public.profiles(user_id) ON DELETE SET NULL,
   "managerName" text,
   "slaHours" jsonb,
   "createdAt" timestamptz DEFAULT now()
 );
 
 -- Alter users table to add new fields
-ALTER TABLE public.users
+ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS "phone" text,
-  ADD COLUMN IF NOT EXISTS "departmentId" uuid REFERENCES public.departments("departmentId") ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS "departmentId" uuid REFERENCES public.departments(dept_id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS "avatarUrl" text,
   ADD COLUMN IF NOT EXISTS "fcmToken" text,
   ADD COLUMN IF NOT EXISTS "isVerified" boolean DEFAULT false,
@@ -71,11 +71,11 @@ ALTER TABLE public.issues
   ADD COLUMN IF NOT EXISTS "priority" public.issue_priority DEFAULT 'medium',
   ADD COLUMN IF NOT EXISTS "priorityScore" numeric DEFAULT 2,
   ADD COLUMN IF NOT EXISTS "location" jsonb,
-  ADD COLUMN IF NOT EXISTS "reportedBy" uuid REFERENCES public.users(id),
+  ADD COLUMN IF NOT EXISTS "reportedBy" uuid REFERENCES public.profiles(user_id),
   ADD COLUMN IF NOT EXISTS "reporterName" text,
-  ADD COLUMN IF NOT EXISTS "assignedTo" uuid REFERENCES public.users(id),
-  ADD COLUMN IF NOT EXISTS "assignedBy" uuid REFERENCES public.users(id),
-  ADD COLUMN IF NOT EXISTS "departmentId" uuid REFERENCES public.departments("departmentId"),
+  ADD COLUMN IF NOT EXISTS "assignedTo" uuid REFERENCES public.profiles(user_id),
+  ADD COLUMN IF NOT EXISTS "assignedBy" uuid REFERENCES public.profiles(user_id),
+  ADD COLUMN IF NOT EXISTS "departmentId" uuid REFERENCES public.departments(dept_id),
   ADD COLUMN IF NOT EXISTS "upvoteCount" integer DEFAULT 0,
   ADD COLUMN IF NOT EXISTS "commentCount" integer DEFAULT 0,
   ADD COLUMN IF NOT EXISTS "photoUrls" text[],
@@ -94,7 +94,7 @@ ALTER TABLE public.issues
 -- Create upvotes table
 CREATE TABLE IF NOT EXISTS public.issue_upvotes (
   "issueId" uuid NOT NULL REFERENCES public.issues(issue_id) ON DELETE CASCADE,
-  "userId" uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  "userId" uuid NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
   "createdAt" timestamptz DEFAULT now(),
   PRIMARY KEY ("issueId", "userId")
 );
@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS public.issue_upvotes (
 CREATE TABLE IF NOT EXISTS public.issue_comments (
   "commentId" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   "issueId" uuid NOT NULL REFERENCES public.issues(issue_id) ON DELETE CASCADE,
-  "authorId" uuid REFERENCES public.users(id) ON DELETE SET NULL,
+  "authorId" uuid REFERENCES public.profiles(user_id) ON DELETE SET NULL,
   "authorName" text,
   "authorRole" public.user_role,
   "text" text NOT NULL,
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS public.issue_status_history (
   "issueId" uuid NOT NULL REFERENCES public.issues(issue_id) ON DELETE CASCADE,
   "fromStatus" public.issue_status,
   "toStatus" public.issue_status,
-  "changedBy" uuid REFERENCES public.users(id),
+  "changedBy" uuid REFERENCES public.profiles(user_id),
   "changedByName" text,
   "changedByRole" public.user_role,
   "note" text,
@@ -132,10 +132,10 @@ CREATE TABLE IF NOT EXISTS public.tasks (
   "issueCategory" text,
   "issueAddress" text,
   "issuePriority" public.issue_priority,
-  "assignedTo" uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  "assignedTo" uuid NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
   "assignedToName" text,
-  "assignedBy" uuid REFERENCES public.users(id) ON DELETE SET NULL,
-  "departmentId" uuid NOT NULL REFERENCES public.departments("departmentId") ON DELETE CASCADE,
+  "assignedBy" uuid REFERENCES public.profiles(user_id) ON DELETE SET NULL,
+  "departmentId" uuid NOT NULL REFERENCES public.departments(dept_id) ON DELETE CASCADE,
   "status" public.task_status DEFAULT 'pending',
   "dueDate" timestamptz,
   "managerNotes" text,
@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
 -- Create notifications table
 CREATE TABLE IF NOT EXISTS public.notifications (
   "notifId" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  "userId" uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  "userId" uuid NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
   "issueId" uuid REFERENCES public.issues(issue_id) ON DELETE CASCADE,
   "type" public.notification_type NOT NULL,
   "title" text NOT NULL,
@@ -173,7 +173,7 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
 -- Create audit_logs table
 CREATE TABLE IF NOT EXISTS public.audit_logs (
   "logId" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  "actorId" uuid REFERENCES public.users(id) ON DELETE SET NULL,
+  "actorId" uuid REFERENCES public.profiles(user_id) ON DELETE SET NULL,
   "actorRole" public.user_role,
   "action" text NOT NULL,
   "targetId" text,

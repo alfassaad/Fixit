@@ -9,7 +9,6 @@ import { CATEGORIES } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { CitizenLayout } from '@/components/layout/CitizenLayout';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -40,7 +39,7 @@ export default function MapScreen() {
     : issues.filter(i => i.category === activeCategory);
 
   const pins = filteredIssues.filter(i => i.location).map(i => ({
-    id: i.issue_id, // Corrected from i.id to i.issue_id
+    id: i.issue_id,
     lat: i.location.lat,
     lng: i.location.lng,
     category: i.category,
@@ -81,7 +80,7 @@ export default function MapScreen() {
   };
 
   return (
-    <CitizenLayout>
+    <>
       <div className="relative h-screen flex flex-col overflow-hidden">
         {/* Top Header */}
         <div className="absolute top-0 left-0 right-0 z-20 p-4 space-y-4 pointer-events-none">
@@ -218,6 +217,6 @@ export default function MapScreen() {
           </div>
         )}
       </div>
-    </CitizenLayout>
+    </>
   );
 }
